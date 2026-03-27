@@ -69,8 +69,8 @@ The demo creates three isolated networks:
 | Breaker v1 | 9001 | http://localhost:9001 | Vulnerable GOOSE breaker |
 | Breaker v2 | 9002 | http://localhost:9002 | Secured GOOSE breaker |
 | OpenPLC | 8081 | http://localhost:8081 | Modbus TCP PLC |
-| ScadaBR | 8080 | http://localhost:8080/ScadaBR | SCADA HMI |
-| Kali | - | docker exec | Attacker workstation |
+| ScadaBR | 8082 | http://localhost:8082/ScadaBR | SCADA HMI |
+| Kali | 2222 | docker exec | Attacker workstation |
 | Control IED | - | Internal only | GOOSE publisher |
 
 ## Common Commands
