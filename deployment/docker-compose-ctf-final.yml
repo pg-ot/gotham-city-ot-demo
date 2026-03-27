@@ -25,7 +25,7 @@ services:
         limits:
           cpus: '1.0'
           memory: 512M
-          pids: 100
+
         reservations:
           cpus: '0.25'
           memory: 128M
@@ -56,7 +56,7 @@ services:
         limits:
           cpus: '1.0'
           memory: 512M
-          pids: 100
+
         reservations:
           cpus: '0.25'
           memory: 128M
@@ -86,7 +86,7 @@ services:
         limits:
           cpus: '0.5'
           memory: 256M
-          pids: 50
+
         reservations:
           cpus: '0.1'
           memory: 64M
@@ -114,7 +114,7 @@ services:
         limits:
           cpus: '2.0'
           memory: 2G
-          pids: 200
+
         reservations:
           cpus: '0.5'
           memory: 512M
@@ -136,7 +136,7 @@ services:
         limits:
           cpus: '1.0'
           memory: 1G
-          pids: 100
+
         reservations:
           cpus: '0.25'
           memory: 256M
@@ -158,7 +158,7 @@ services:
         limits:
           cpus: '1.0'
           memory: 2G
-          pids: 500
+
         reservations:
           cpus: '0.25'
           memory: 512M
