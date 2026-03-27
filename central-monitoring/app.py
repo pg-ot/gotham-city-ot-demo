@@ -1,5 +1,7 @@
-from flask import Flask, jsonify, render_template_string
+from flask import Flask, jsonify, render_template_string, request
 import requests
+import os
+import urllib.parse
 from datetime import datetime
 
 app = Flask(__name__)
@@ -343,11 +345,35 @@ def api_status():
         'scadabr': fetch_scadabr('scadabr')
     }
     
+    # Intentional SSRF Flaw
+    # If the user provides a direct ?node_url= query, the backend fetches it blindly
+    custom_node_url = request.args.get('node_url')
+    custom_data = None
+    if custom_node_url:
+        try:
+            r = requests.get(custom_node_url, timeout=2)
+            custom_data = {'online': True, 'http_status': r.status_code, 'data': r.text[:200]}
+        except Exception as e:
+            custom_data = {'online': False, 'error': str(e)}
+    
     return jsonify({
         'timestamp': datetime.now().isoformat(),
         'substation': substation_data,
-        'industrial': industrial_data
+        'industrial': industrial_data,
+        'custom_node': custom_data
     })
+
+@app.route('/api/diag')
+def api_diag():
+    # Intentional Command Injection Flaw
+    # e.g., /api/diag?ip=127.0.0.1;id
+    ip = request.args.get('ip', '127.0.0.1')
+    try:
+        # Use os.popen to execute the ping command directly against the OS
+        output = os.popen(f"ping -c 1 {ip}").read()
+        return jsonify({'status': 'success', 'output': output})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)})
 
 def fetch_control():
     # Implicitly active since it's the core control node
