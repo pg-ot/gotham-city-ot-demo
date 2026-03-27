@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Virtual Substation — Network Topology</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #0a0e12;
+    color: #7a8494;
+    min-height: 100vh;
+    padding: 32px;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 48px;
+}
+.header h1 {
+    font-size: 24px;
+    font-weight: 700;
+    color: #b8c4d0;
+    margin-bottom: 8px;
+}
+.header p {
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #3a4454;
+}
+
+/* Network Topology Container */
+.topology {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+/* Central Network (Top) */
+.central-network {
+    background: linear-gradient(135deg, #1a1420 0%, #0f0a14 100%);
+    border: 2px solid #3a2850;
+    border-radius: 12px;
+    padding: 32px;
+    margin-bottom: 48px;
+    position: relative;
+}
+.central-network::after {
+    content: '';
+    position: absolute;
+    bottom: -48px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 48px;
+    background: linear-gradient(180deg, #3a2850 0%, transparent 100%);
+}
+
+.network-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+.network-icon {
+    width: 48px;
+    height: 48px;
+    background: #2a1a3a;
+    border: 2px solid #4a3060;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+.network-info h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #c8b4e0;
+    margin-bottom: 4px;
+}
+.network-info .subnet {
+    font-size: 13px;
+    font-family: 'Courier New', monospace;
+    color: #6a5080;
+    font-weight: 600;
+}
+
+.network-desc {
+    font-size: 12px;
+    color: #5a4a6a;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+/* Segments Container */
+.segments {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 32px;
+    position: relative;
+}
+
+/* Connection Lines */
+.segments::before {
+    content: '';
+    position: absolute;
+    top: -24px;
+    left: 16.66%;
+    right: 16.66%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent 0%, #3a4454 20%, #3a4454 80%, transparent 100%);
+}
+.segments::after {
+    content: '';
+    position: absolute;
+    top: -24px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 12px;
+    height: 12px;
+    background: #3a4454;
+    border-radius: 50%;
+    border: 3px solid #0a0e12;
+}
+
+/* Individual Segment */
+.segment {
+    border: 2px solid;
+    border-radius: 12px;
+    padding: 24px;
+    position: relative;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+.segment:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+/* Connection line from top */
+.segment::before {
+    content: '';
+    position: absolute;
+    top: -24px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 2px;
+    height: 24px;
+    background: #3a4454;
+}
+
+/* Substation Segment */
+.segment-substation {
+    background: linear-gradient(135deg, #0e1a24 0%, #0a0f14 100%);
+    border-color: #2a4a6a;
+}
+.segment-substation .segment-icon {
+    background: #1a2a3a;
+    border-color: #3a5a7a;
+}
+
+/* Industrial Segment */
+.segment-industrial {
+    background: linear-gradient(135deg, #0e1a0e 0%, #0a0f0a 100%);
+    border-color: #2a4a2a;
+}
+.segment-industrial .segment-icon {
+    background: #1a2a1a;
+    border-color: #3a5a3a;
+}
+
+/* Attacker Segment */
+.segment-attacker {
+    background: linear-gradient(135deg, #1a0e0e 0%, #0f0a0a 100%);
+    border-color: #4a2a2a;
+}
+.segment-attacker .segment-icon {
+    background: #2a1a1a;
+    border-color: #5a3a3a;
+}
+
+.segment-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+.segment-icon {
+    width: 40px;
+    height: 40px;
+    border: 2px solid;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+}
+.segment-title h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #b8c4d0;
+    margin-bottom: 2px;
+}
+.segment-title .subnet {
+    font-size: 11px;
+    font-family: 'Courier New', monospace;
+    color: #5a6a7a;
+    font-weight: 600;
+}
+
+.segment-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 4px;
+    margin-bottom: 16px;
+}
+.status-isolated {
+    background: #1a2a1a;
+    color: #4a8a4a;
+    border: 1px solid #2a4a2a;
+}
+.status-internet {
+    background: #1a1a2a;
+    color: #4a6a9a;
+    border: 1px solid #2a3a5a;
+}
+.status-pending {
+    background: #2a2a1a;
+    color: #8a8a4a;
+    border: 1px solid #4a4a2a;
+}
+
+/* Device Cards */
+.devices {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.device {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 6px;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+}
+.device:hover {
+    background: rgba(0,0,0,0.5);
+    border-color: rgba(255,255,255,0.1);
+    transform: translateX(4px);
+}
+.device-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #9aa4b2;
+    margin-bottom: 4px;
+}
+.device-ip {
+    font-size: 10px;
+    font-family: 'Courier New', monospace;
+    color: #4a5a6a;
+    margin-bottom: 6px;
+}
+.device-tag {
+    display: inline-block;
+    font-size: 8px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-weight: 600;
+}
+.tag-vulnerable { background: #2a1a0a; color: #8a5a3a; border: 1px solid #3a2a1a; }
+.tag-secure { background: #0a1a2a; color: #3a6a8a; border: 1px solid #1a2a3a; }
+.tag-publisher { background: #0a2a1a; color: #3a8a5a; border: 1px solid #1a3a2a; }
+.tag-plc { background: #0a2a1a; color: #3a8a5a; border: 1px solid #1a3a2a; }
+.tag-scada { background: #0a1a2a; color: #3a6a8a; border: 1px solid #1a2a3a; }
+.tag-attacker { background: #2a0a1a; color: #8a3a6a; border: 1px solid #3a1a2a; }
+
+/* Legend */
+.legend {
+    max-width: 1400px;
+    margin: 48px auto 0;
+    padding: 24px;
+    background: #0f1318;
+    border: 1px solid #1a2030;
+    border-radius: 8px;
+}
+.legend h4 {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #5a6a7a;
+    margin-bottom: 16px;
+}
+.legend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 16px;
+}
+.legend-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+.legend-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+.legend-text h5 {
+    font-size: 11px;
+    font-weight: 600;
+    color: #9aa4b2;
+    margin-bottom: 2px;
+}
+.legend-text p {
+    font-size: 9px;
+    color: #4a5a6a;
+    line-height: 1.4;
+}
+
+/* Status Indicator */
+.status-bar {
+    max-width: 1400px;
+    margin: 24px auto;
+    padding: 16px 24px;
+    background: #0a1a0a;
+    border: 1px solid #2a4a2a;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+.dot-green { background: #4a8a4a; }
+.dot-yellow { background: #8a8a4a; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.status-text {
+    font-size: 11px;
+    color: #7a8a9a;
+}
+.status-text strong {
+    color: #b8c4d0;
+    font-weight: 600;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Virtual Substation Network Topology</h1>
+    <p>AI-Powered OT Attack Demo · Segmented Architecture</p>
+</div>
+
+<div class="status-bar">
+    <div class="status-item">
+        <div class="status-dot dot-green"></div>
+        <div class="status-text"><strong>5</strong> containers running</div>
+    </div>
+    <div class="status-item">
+        <div class="status-dot dot-green"></div>
+        <div class="status-text"><strong>3</strong> networks isolated</div>
+    </div>
+    <div class="status-item">
+        <div class="status-dot dot-yellow"></div>
+        <div class="status-text">Kali workstation: <strong>Parked</strong></div>
+    </div>
+</div>
+
+<div class="topology">
+    
+    <!-- Central Management Network -->
+    <div class="central-network">
+        <div class="network-header">
+            <div class="network-icon">🌐</div>
+            <div class="network-info">
+                <h2>Central Management Network</h2>
+                <div class="subnet">10.10.10.0/24</div>
+            </div>
+        </div>
+        <div class="network-desc">
+            This is the central hub where the Kali attack workstation resides. It has internet access and can pivot into both isolated OT segments. 
+            Used to demonstrate how an attacker with multi-network access can compromise isolated industrial systems.
+        </div>
+        <div class="devices">
+            <div class="device" style="opacity: 0.5; cursor: default;">
+                <div class="device-name">🐉 Kali Workstation (Parked)</div>
+                <div class="device-ip">10.10.10.5 (Primary) · 192.168.100.6 (Substation) · 192.168.200.6 (Industrial)</div>
+                <div class="device-tag tag-attacker">Multi-homed · Pending deployment</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Three Isolated Segments -->
+    <div class="segments">
+        
+        <!-- Substation Segment -->
+        <div class="segment segment-substation">
+            <div class="segment-header">
+                <div class="segment-icon">⚡</div>
+                <div class="segment-title">
+                    <h3>Substation Segment</h3>
+                    <div class="subnet">192.168.100.0/24</div>
+                </div>
+            </div>
+            <div class="segment-status status-isolated">
+                <span>●</span> Isolated from Internet
+            </div>
+            <div class="devices">
+                <a href="http://localhost:9001" target="_blank" class="device">
+                    <div class="device-name">⚡ Breaker IED v1</div>
+                    <div class="device-ip">192.168.100.2 · Port 9001</div>
+                    <div class="device-tag tag-vulnerable">Vulnerable · No sequence validation</div>
+                </a>
+                <a href="http://localhost:9002" target="_blank" class="device">
+                    <div class="device-name">🔒 Breaker IED v2</div>
+                    <div class="device-ip">192.168.100.4 · Port 9002</div>
+                    <div class="device-tag tag-secure">Secure · stNum/sqNum validated</div>
+                </a>
+                <div class="device">
+                    <div class="device-name">📡 Control IED</div>
+                    <div class="device-ip">192.168.100.x</div>
+                    <div class="device-tag tag-publisher">GOOSE Publisher · IEC 61850</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Industrial Process Segment -->
+        <div class="segment segment-industrial">
+            <div class="segment-header">
+                <div class="segment-icon">🏭</div>
+                <div class="segment-title">
+                    <h3>Industrial Process</h3>
+                    <div class="subnet">192.168.200.0/24</div>
+                </div>
+            </div>
+            <div class="segment-status status-isolated">
+                <span>●</span> Isolated from Internet
+            </div>
+            <div class="devices">
+                <a href="http://localhost:8081" target="_blank" class="device">
+                    <div class="device-name">🔧 OpenPLC Runtime</div>
+                    <div class="device-ip">192.168.200.3 · Port 8081 · Modbus 502</div>
+                    <div class="device-tag tag-plc">PLC · Modbus TCP Server</div>
+                </a>
+                <a href="http://localhost:8080/ScadaBR" target="_blank" class="device">
+                    <div class="device-name">📊 ScadaBR HMI</div>
+                    <div class="device-ip">192.168.200.4 · Port 8080</div>
+                    <div class="device-tag tag-scada">SCADA · HMI Interface</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Future: Additional Segment Placeholder -->
+        <div class="segment segment-attacker">
+            <div class="segment-header">
+                <div class="segment-icon">🎯</div>
+                <div class="segment-title">
+                    <h3>Attack Surface</h3>
+                    <div class="subnet">Demo Targets</div>
+                </div>
+            </div>
+            <div class="segment-status status-pending">
+                <span>●</span> Attack Vectors
+            </div>
+            <div class="devices">
+                <div class="device">
+                    <div class="device-name">🎯 GOOSE Injection</div>
+                    <div class="device-ip">Target: Breaker IED v1</div>
+                    <div class="device-tag tag-vulnerable">IEC 61850 Replay Attack</div>
+                </div>
+                <div class="device">
+                    <div class="device-name">🎯 Modbus Manipulation</div>
+                    <div class="device-ip">Target: OpenPLC</div>
+                    <div class="device-tag tag-vulnerable">Unauthorized Write</div>
+                </div>
+                <div class="device">
+                    <div class="device-name">🎯 Lateral Movement</div>
+                    <div class="device-ip">Pivot: Substation → Industrial</div>
+                    <div class="device-tag tag-vulnerable">Cross-segment Attack</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<div class="legend">
+    <h4>Network Architecture Details</h4>
+    <div class="legend-grid">
+        <div class="legend-item">
+            <div class="legend-icon" style="background:#1a2a3a; border:2px solid #3a5a7a;">⚡</div>
+            <div class="legend-text">
+                <h5>Substation Segment</h5>
+                <p>IEC 61850 GOOSE protocol. Protection relays and breaker IEDs. Isolated from internet and other segments.</p>
+            </div>
+        </div>
+        <div class="legend-item">
+            <div class="legend-icon" style="background:#1a2a1a; border:2px solid #3a5a3a;">🏭</div>
+            <div class="legend-text">
+                <h5>Industrial Process</h5>
+                <p>Modbus TCP protocol. PLC runtime and SCADA HMI. Isolated from internet and substation segment.</p>
+            </div>
+        </div>
+        <div class="legend-item">
+            <div class="legend-icon" style="background:#2a1a1a; border:2px solid #5a3a3a;">🐉</div>
+            <div class="legend-text">
+                <h5>Kali Workstation</h5>
+                <p>Multi-homed attacker machine. Can pivot between all segments. Used for AI-powered attack demonstrations.</p>
+            </div>
+        </div>
+        <div class="legend-item">
+            <div class="legend-icon" style="background:#2a1a3a; border:2px solid #4a3060;">🌐</div>
+            <div class="legend-text">
+                <h5>Central Network</h5>
+                <p>Management network with internet access. Jump host for accessing isolated OT segments.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-refresh status every 5 seconds
+setInterval(() => {
+    fetch('http://localhost:9001/status')
+        .then(r => r.json())
+        .then(data => console.log('Breaker v1:', data))
+        .catch(() => {});
+}, 5000);
+</script>
+
+</body>
+</html>

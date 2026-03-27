@@ -1,0 +1,2024 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Substation Dashboard</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: #0e141d;
+            /* Midnight slate background so black bats are visible */
+            background-image: linear-gradient(rgba(234, 179, 8, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(234, 179, 8, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+            color: #8b949e;
+            min-height: 100vh;
+            padding: 16px 24px;
+            overflow-x: hidden;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-family: Impact, 'Arial Black', sans-serif;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #f3f4f6;
+            margin-bottom: 4px;
+            text-shadow: 0 4px 12px rgba(0, 0, 0, 1), 0 0 4px rgba(234, 179, 8, 0.3);
+        }
+
+        .header p {
+            font-size: 10px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #eab308;
+            /* Bat Gold */
+            font-weight: 700;
+        }
+
+        /* Corner Navigation */
+        .corner-nav {
+            position: absolute;
+            top: 16px;
+            right: 24px;
+            z-index: 100;
+        }
+
+        /* Tab Contents */
+        .tab-content {
+            display: none;
+            flex-direction: column;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        /* ====================================================
+   SHARED STYLES & LAYOUT
+   ==================================================== */
+        .central-network {
+            background: linear-gradient(135deg, #0d1117 0%, #010409 100%);
+            border: 2px solid #30363d;
+            border-radius: 8px;
+            padding: 16px 24px;
+            margin-bottom: 32px;
+            position: relative;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            width: 100%;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+        }
+
+        .central-network::after {
+            content: '';
+            position: absolute;
+            bottom: -32px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 32px;
+            background: linear-gradient(180deg, #30363d 0%, transparent 100%);
+        }
+
+        .network-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .network-icon {
+            width: 36px;
+            height: 36px;
+            background: #eab308;
+            color: #000;
+            border: 2px solid #ca8a04;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 0 10px rgba(234, 179, 8, 0.2);
+        }
+
+        .network-info h2 {
+            font-size: 16px;
+            font-weight: 700;
+            color: #eab308;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .network-info .subnet {
+            font-size: 10px;
+            font-family: 'Courier New', monospace;
+            color: #fde047;
+            font-weight: 700;
+            background: rgba(234, 179, 8, 0.15);
+            border: 1px solid rgba(234, 179, 8, 0.4);
+            padding: 2px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            box-shadow: 0 0 10px rgba(234, 179, 8, 0.15);
+            letter-spacing: 0.5px;
+        }
+
+        .network-desc {
+            font-size: 11px;
+            color: #768390;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
+        /* ====================================================
+   ARCHITECTURE VIEW STYLES
+   ==================================================== */
+        #view-topology {
+            max-width: 1200px;
+            margin: 0 auto;
+            gap: 0;
+        }
+
+        .segments {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 24px;
+            position: relative;
+            max-width: 1000px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .segments::before {
+            content: '';
+            position: absolute;
+            top: -16px;
+            left: 25%;
+            right: 25%;
+            height: 2px;
+            background: linear-gradient(90deg, transparent 0%, #30363d 10%, #30363d 90%, transparent 100%);
+        }
+
+        .segments::after {
+            content: '';
+            position: absolute;
+            top: -16px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 10px;
+            height: 10px;
+            background: #30363d;
+            border-radius: 50%;
+            border: 3px solid #020203;
+        }
+
+        .segment {
+            border: 2px solid;
+            border-radius: 8px;
+            padding: 16px;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .segment::before {
+            content: '';
+            position: absolute;
+            top: -16px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 2px;
+            height: 16px;
+            background: #30363d;
+        }
+
+        /* Cold Steel Substation */
+        .segment-substation {
+            background: linear-gradient(135deg, #0d1219 0%, #05080c 100%);
+            border-color: #1e3a5f;
+        }
+
+        .segment-substation .segment-icon {
+            background: #1e3a5f;
+            border-color: #3b82f6;
+            color: #fff;
+        }
+
+        /* Industrial Toxic Green */
+        .segment-industrial {
+            background: linear-gradient(135deg, #0c1410 0%, #040805 100%);
+            border-color: #14532d;
+        }
+
+        .segment-industrial .segment-icon {
+            background: #14532d;
+            border-color: #10b981;
+            color: #fff;
+        }
+
+        .segment-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .segment-icon {
+            width: 32px;
+            height: 32px;
+            border: 2px solid;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .segment-title h3 {
+            font-size: 14px;
+            font-weight: 700;
+            color: #c9d1d9;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Themed Subnet Highlights */
+        .segment-substation .subnet {
+            font-size: 10px;
+            font-family: 'Courier New', monospace;
+            color: #93c5fd;
+            font-weight: 700;
+            background: rgba(59, 130, 246, 0.15);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            padding: 2px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            box-shadow: 0 0 8px rgba(59, 130, 246, 0.15);
+        }
+
+        .segment-industrial .subnet {
+            font-size: 10px;
+            font-family: 'Courier New', monospace;
+            color: #6ee7b7;
+            font-weight: 700;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            padding: 2px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.15);
+        }
+
+        .segment-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 9px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            background: #050505;
+            color: #8b949e;
+            border: 1px solid #30363d;
+        }
+
+        /* Hardware Devices */
+        .devices {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .devices-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .device {
+            background: #090b0e;
+            border: 1px solid #21262d;
+            border-radius: 4px;
+            transition: all 0.2s;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+        }
+
+        .device:hover {
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.9);
+            transform: translateY(-2px);
+            border-color: #30363d;
+        }
+
+        .ied-device {
+            border-left: 4px solid #3b82f6;
+        }
+
+        .plc-device {
+            border-left: 4px solid #10b981;
+        }
+
+        .server-device {
+            border-left: 4px solid #eab308;
+        }
+
+        .hw-header {
+            background: #010409;
+            padding: 4px 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #21262d;
+        }
+
+        .hw-label {
+            font-size: 8px;
+            letter-spacing: 2px;
+            font-weight: 700;
+            color: #768390;
+            text-transform: uppercase;
+        }
+
+        .hw-leds {
+            display: flex;
+            gap: 6px;
+        }
+
+        .led {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #111;
+            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.8);
+            position: relative;
+        }
+
+        .led.on {
+            background: #10b981;
+            box-shadow: 0 0 5px #10b981;
+        }
+
+        .led.rx {
+            background: #3b82f6;
+            box-shadow: 0 0 5px #3b82f6;
+            animation: flicker 1.5s infinite;
+        }
+
+        .led.tx {
+            background: #f59e0b;
+            box-shadow: 0 0 5px #f59e0b;
+            animation: blink 0.8s infinite;
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.3;
+            }
+        }
+
+        @keyframes flicker {
+
+            0%,
+            20%,
+            60%,
+            100% {
+                opacity: 1;
+            }
+
+            10% {
+                opacity: 0.2;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .hw-footer {
+            background: #010409;
+            padding: 4px 10px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 6px;
+            border-top: 1px solid #21262d;
+        }
+
+        .port {
+            width: 14px;
+            height: 10px;
+            background: #000;
+            border: 1px solid #30363d;
+            border-radius: 2px;
+            position: relative;
+        }
+
+        .port.rj45 {
+            border-bottom-width: 2px;
+            border-bottom-color: #484f58;
+        }
+
+        .port.fiber {
+            border-radius: 0;
+            width: 16px;
+            border-color: #8b949e;
+        }
+
+        .port.active::after {
+            content: '';
+            position: absolute;
+            bottom: -3px;
+            left: 1px;
+            width: 3px;
+            height: 3px;
+            background: #10b981;
+            box-shadow: 0 0 4px #10b981;
+            border-radius: 50%;
+        }
+
+        .plc-terminals {
+            background: #010409;
+            padding: 4px 10px;
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid #21262d;
+        }
+
+        .term-block {
+            display: flex;
+            gap: 3px;
+        }
+
+        .screw {
+            width: 8px;
+            height: 8px;
+            background: #6e7681;
+            border-radius: 50%;
+            border: 1px solid #000;
+            position: relative;
+            box-shadow: inset 0 -1px 2px rgba(0, 0, 0, 0.8);
+        }
+
+        .screw::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 1px;
+            right: 1px;
+            height: 1px;
+            background: #111;
+            transform: rotate(45deg);
+        }
+
+        .device-body {
+            padding: 10px 12px;
+        }
+
+        .device-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: #c9d1d9;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .device-ip {
+            font-size: 10px;
+            font-family: 'Courier New', monospace;
+            color: #8b949e;
+            margin-bottom: 8px;
+        }
+
+        .device-tag {
+            display: inline-block;
+            font-size: 7px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 2px 6px;
+            border-radius: 2px;
+            font-weight: 700;
+            margin-bottom: 2px;
+        }
+
+        /* Gotham Themed Tags */
+        .tag-active {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            border: 1px solid #065f46;
+        }
+
+        .tag-protocol {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            border: 1px solid #1e3a8a;
+        }
+
+        .tag-scada {
+            background: rgba(234, 179, 8, 0.1);
+            color: #eab308;
+            border: 1px solid #854d0e;
+        }
+
+        .cities-container {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #30363d;
+        }
+
+        .cities-col {
+            flex-direction: column;
+        }
+
+        .city-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            background: #010409;
+            border: 1px solid #21262d;
+            border-radius: 4px;
+            padding: 6px;
+        }
+
+        .city-name {
+            font-size: 8px;
+            color: #8b949e;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        .city-icon {
+            font-size: 16px;
+            filter: grayscale(100%);
+        }
+
+        .glowing-city {
+            animation: cityGlow 2s ease-in-out infinite alternate;
+            filter: none;
+        }
+
+        @keyframes cityGlow {
+            0% {
+                filter: drop-shadow(0 0 2px #d97706);
+                transform: scale(1);
+            }
+
+            100% {
+                filter: drop-shadow(0 0 8px #f59e0b) drop-shadow(0 0 15px #fcd34d);
+                transform: scale(1.05);
+            }
+        }
+
+        .plant-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px;
+            background: #010409;
+            border: 1px solid #14532d;
+            border-radius: 4px;
+            margin-top: 10px;
+            border-top: 1px dashed #30363d;
+        }
+
+        .plant-icon-wrapper {
+            position: relative;
+            font-size: 24px;
+            line-height: 1;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            filter: grayscale(100%) sepia(100%) hue-rotate(90deg) brightness(0.8) contrast(1.2);
+        }
+
+        .base-icon {
+            z-index: 1;
+        }
+
+        .overlay-gear {
+            position: absolute;
+            bottom: -4px;
+            right: -4px;
+            font-size: 14px;
+            z-index: 2;
+            animation: spin 4s linear infinite;
+            filter: drop-shadow(0 0 2px #000);
+        }
+
+        .overlay-gear-2 {
+            position: absolute;
+            top: 0px;
+            left: -4px;
+            font-size: 10px;
+            z-index: 2;
+            animation: spin 3s linear infinite reverse;
+            filter: drop-shadow(0 0 2px #000);
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .plant-details {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .plant-details strong {
+            font-size: 10px;
+            color: #10b981;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .plant-details span {
+            font-size: 8px;
+            color: #768390;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .status-bar {
+            max-width: 1000px;
+            margin: 0 auto 24px auto;
+            padding: 12px 20px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .dot-green {
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981;
+        }
+
+        .dot-gold {
+            background: #eab308;
+            box-shadow: 0 0 8px #eab308;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0.4
+            }
+        }
+
+        .status-text {
+            font-size: 11px;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .status-text strong {
+            color: #f3f4f6;
+            font-weight: 700;
+        }
+
+        /* ====================================================
+   PROTOCOLS VIEW STYLES
+   ==================================================== */
+        #view-protocols {
+            max-width: 1200px;
+            margin: 0 auto;
+            gap: 32px;
+        }
+
+        .protocol-card {
+            background: linear-gradient(135deg, #0d1117 0%, #010409 100%);
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+        }
+
+        .protocol-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 1px solid #21262d;
+            padding-bottom: 12px;
+        }
+
+        .protocol-title h2 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #f3f4f6;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .protocol-title p {
+            font-size: 11px;
+            color: #8b949e;
+            margin-top: 4px;
+        }
+
+        .protocol-tags {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tag {
+            font-size: 8px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 4px 8px;
+            border-radius: 2px;
+            font-weight: 700;
+        }
+
+        .tag-goose {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            border: 1px solid #1e3a8a;
+        }
+
+        .tag-modbus {
+            background: rgba(16, 185, 129, 0.1);
+            color: #10b981;
+            border: 1px solid #065f46;
+        }
+
+        /* Diagram Wrap for Responsiveness */
+        .viz-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            padding-bottom: 16px;
+        }
+
+        .viz-area {
+            display: flex;
+            align-items: stretch;
+            justify-content: space-between;
+            position: relative;
+            padding: 16px 0;
+            min-height: 200px;
+            min-width: 700px;
+        }
+
+        .device-node {
+            background: #090b0e;
+            border: 1px solid #21262d;
+            border-radius: 4px;
+            width: 180px;
+            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .node-header {
+            background: #010409;
+            padding: 6px 10px;
+            font-size: 9px;
+            font-weight: 700;
+            color: #768390;
+            border-bottom: 1px solid #21262d;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .node-body {
+            padding: 12px;
+            text-align: center;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .node-icon {
+            font-size: 28px;
+            margin-bottom: 6px;
+            filter: grayscale(100%);
+            opacity: 0.8;
+        }
+
+        .node-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: #c9d1d9;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .node-role {
+            font-size: 10px;
+            color: #8b949e;
+            margin-top: 4px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .goose-network {
+            flex-grow: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .switch-node {
+            width: 60px;
+            height: 60px;
+            background: #010409;
+            border: 2px solid #30363d;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            z-index: 5;
+            filter: grayscale(100%);
+        }
+
+        .track {
+            position: absolute;
+            height: 2px;
+            background: rgba(59, 130, 246, 0.2);
+            z-index: 1;
+        }
+
+        .track-g-in {
+            left: 0;
+            right: 50%;
+            top: 50%;
+        }
+
+        .track-g-vert1 {
+            left: 50%;
+            bottom: 50%;
+            height: 25%;
+            width: 2px;
+        }
+
+        .track-g-horiz1 {
+            left: 50%;
+            right: 0;
+            top: 25%;
+        }
+
+        .track-g-vert2 {
+            left: 50%;
+            top: 50%;
+            height: 25%;
+            width: 2px;
+        }
+
+        .track-g-horiz2 {
+            left: 50%;
+            right: 0;
+            top: 75%;
+        }
+
+        .subscriber-group {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 24px;
+        }
+
+        .packet {
+            position: absolute;
+            background: #020203;
+            border: 1px solid;
+            border-radius: 2px;
+            padding: 4px 8px;
+            font-size: 10px;
+            font-family: 'Courier New', monospace;
+            z-index: 20;
+            white-space: nowrap;
+            font-weight: 600;
+        }
+
+        .packet-goose {
+            border-color: #3b82f6;
+            color: #93c5fd;
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.4);
+        }
+
+        .packet-g-main {
+            top: calc(50% - 12px);
+            left: 10%;
+            animation: goose-pub 4s linear infinite;
+        }
+
+        .packet-g-sub1 {
+            top: calc(25% - 12px);
+            left: 50%;
+            animation: goose-sub1 4s linear infinite;
+            opacity: 0;
+        }
+
+        .packet-g-sub2 {
+            top: calc(75% - 12px);
+            left: 50%;
+            animation: goose-sub2 4s linear infinite;
+            opacity: 0;
+        }
+
+        @keyframes goose-pub {
+            0% {
+                left: 5%;
+                top: calc(50% - 12px);
+                opacity: 1;
+            }
+
+            30% {
+                left: 45%;
+                top: calc(50% - 12px);
+                opacity: 1;
+            }
+
+            31% {
+                left: 45%;
+                top: calc(50% - 12px);
+                opacity: 0;
+            }
+
+            100% {
+                left: 45%;
+                top: calc(50% - 12px);
+                opacity: 0;
+            }
+        }
+
+        @keyframes goose-sub1 {
+
+            0%,
+            30% {
+                left: 45%;
+                top: calc(50% - 12px);
+                opacity: 0;
+            }
+
+            31% {
+                left: 45%;
+                top: calc(50% - 12px);
+                opacity: 1;
+            }
+
+            45% {
+                left: 45%;
+                top: calc(25% - 12px);
+                opacity: 1;
+            }
+
+            85% {
+                left: 85%;
+                top: calc(25% - 12px);
+                opacity: 1;
+            }
+
+            86% {
+                left: 85%;
+                top: calc(25% - 12px);
+                opacity: 0;
+            }
+
+            100% {
+                left: 85%;
+                top: calc(25% - 12px);
+                opacity: 0;
+            }
+        }
+
+        @keyframes goose-sub2 {
+
+            0%,
+            30% {
+                left: 45%;
+                top: calc(50% - 12px);
+                opacity: 0;
+            }
+
+            31% {
+                left: 45%;
+                top: calc(50% - 12px);
+                opacity: 1;
+            }
+
+            45% {
+                left: 45%;
+                top: calc(75% - 12px);
+                opacity: 1;
+            }
+
+            85% {
+                left: 85%;
+                top: calc(75% - 12px);
+                opacity: 1;
+            }
+
+            86% {
+                left: 85%;
+                top: calc(75% - 12px);
+                opacity: 0;
+            }
+
+            100% {
+                left: 85%;
+                top: calc(75% - 12px);
+                opacity: 0;
+            }
+        }
+
+        .modbus-network {
+            flex-grow: 1;
+            position: relative;
+        }
+
+        .track-m-req {
+            top: 35%;
+            left: 0;
+            right: 0;
+            background: rgba(245, 158, 11, 0.2);
+        }
+
+        .track-m-res {
+            top: 65%;
+            left: 0;
+            right: 0;
+            background: rgba(16, 185, 129, 0.2);
+        }
+
+        .packet-m-req {
+            top: calc(35% - 12px);
+            border-color: #f59e0b;
+            color: #fde68a;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+            animation: modbus-request 4s linear infinite;
+        }
+
+        .packet-m-res {
+            top: calc(65% - 12px);
+            border-color: #10b981;
+            color: #a7f3d0;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+            animation: modbus-response 4s linear infinite;
+            opacity: 0;
+        }
+
+        @keyframes modbus-request {
+            0% {
+                left: 5%;
+                opacity: 1;
+            }
+
+            40% {
+                left: 85%;
+                opacity: 1;
+            }
+
+            45% {
+                left: 85%;
+                opacity: 0;
+            }
+
+            100% {
+                left: 85%;
+                opacity: 0;
+            }
+        }
+
+        @keyframes modbus-response {
+            0% {
+                right: 5%;
+                opacity: 0;
+            }
+
+            45% {
+                right: 5%;
+                opacity: 0;
+            }
+
+            50% {
+                right: 5%;
+                opacity: 1;
+            }
+
+            90% {
+                right: 85%;
+                opacity: 1;
+            }
+
+            95% {
+                right: 85%;
+                opacity: 0;
+            }
+
+            100% {
+                opacity: 0;
+            }
+        }
+
+        .data-inspector {
+            background: #010409;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .inspector-title {
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #8b949e;
+            font-weight: 700;
+        }
+
+        .data-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 8px;
+        }
+
+        .data-field {
+            background: #0d1117;
+            border: 1px solid #21262d;
+            padding: 6px 10px;
+            border-radius: 2px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .field-name {
+            font-size: 8px;
+            color: #768390;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .field-value {
+            font-size: 11px;
+            font-family: 'Courier New', monospace;
+            color: #c9d1d9;
+            font-weight: 700;
+        }
+
+        .val-highlight-blue {
+            color: #3b82f6;
+        }
+
+        .val-highlight-green {
+            color: #10b981;
+        }
+
+        .val-highlight-yellow {
+            color: #f59e0b;
+        }
+
+        .arrow-right-blue {
+            position: absolute;
+            right: 0;
+            top: -4px;
+            width: 0;
+            height: 0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-left: 10px solid rgba(59, 130, 246, 0.4);
+        }
+
+        .arrow-right-yellow {
+            position: absolute;
+            right: 0;
+            top: -4px;
+            width: 0;
+            height: 0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-left: 10px solid rgba(245, 158, 11, 0.4);
+        }
+
+        .arrow-left-green {
+            position: absolute;
+            left: 0;
+            top: -4px;
+            width: 0;
+            height: 0;
+            border-top: 5px solid transparent;
+            border-bottom: 5px solid transparent;
+            border-right: 10px solid rgba(16, 185, 129, 0.4);
+        }
+
+        /* New classes for Freeze toggle and Speed tags */
+        .tab-header-actions {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 16px;
+        }
+
+        .btn-action {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            color: #8b949e;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .btn-action:hover {
+            background: #161b22;
+            color: #c9d1d9;
+            border-color: #eab308;
+            box-shadow: 0 0 8px rgba(234, 179, 8, 0.2);
+        }
+
+        .paused-animations * {
+            animation-play-state: paused !important;
+        }
+
+        .tag-speed {
+            background: rgba(234, 179, 8, 0.05);
+            color: #eab308;
+            border: 1px solid #854d0e;
+        }
+
+
+        /* ====================================================
+   RESPONSIVE DESIGN (Media Queries)
+   ==================================================== */
+
+        @media (max-width: 1024px) {
+
+            /* Stack segments in a single column on medium screens */
+            .segments {
+                grid-template-columns: 1fr;
+                gap: 24px;
+            }
+
+            /* Hide the structural connection lines when stacked to prevent weird artifacts */
+            .segments::before,
+            .segments::after,
+            .segment::before,
+            .central-network::after {
+                display: none;
+            }
+
+            .central-network {
+                margin-bottom: 24px;
+            }
+        }
+
+        @media (max-width: 768px) {
+
+            /* Adjust padding and font sizes for mobile view */
+            body {
+                padding: 12px;
+            }
+
+            .header h1 {
+                font-size: 20px;
+            }
+
+            /* Stack internal cards inside segments */
+            .devices-row {
+                grid-template-columns: 1fr;
+            }
+
+            /* Reposition status bar elements vertically */
+            .status-bar {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+                padding: 12px 16px;
+            }
+
+            /* Bring corner navigation back into standard document flow */
+            .corner-nav {
+                position: static;
+                display: flex;
+                justify-content: center;
+                margin-bottom: 16px;
+            }
+
+            .header {
+                margin-bottom: 24px !important;
+            }
+
+            .protocol-header {
+                flex-direction: column;
+                gap: 12px;
+            }
+        }
+
+        /* ====================================================
+   ATMOSPHERIC BATS (GOTHAM THEME)
+   ==================================================== */
+        .header,
+        .tab-content {
+            position: relative;
+            z-index: 10;
+            /* Keep dashboard elements above the bats */
+        }
+
+        .bat-cave {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            /* Allows clicking through the bats */
+            z-index: 1;
+            /* Places bats behind the dashboard cards but above the grid */
+            overflow: hidden;
+        }
+
+        .bat-wrapper {
+            position: absolute;
+            will-change: transform;
+            opacity: 0.6;
+            /* Restored shadowy opacity */
+            filter: brightness(0) drop-shadow(0 0 3px rgba(234, 179, 8, 0.4));
+            /* Restored pitch black silhouette */
+        }
+
+        .bat-icon {
+            font-size: 24px;
+            animation: flap 0.15s infinite alternate ease-in-out;
+        }
+
+        /* Wing flapping animation */
+        @keyframes flap {
+            0% {
+                transform: scaleY(1);
+            }
+
+            100% {
+                transform: scaleY(0.3);
+            }
+        }
+
+        /* Flight paths and timings */
+        .bat-1 {
+            animation: fly1 10s ease-in-out infinite;
+            animation-delay: -2s;
+        }
+
+        .bat-2 {
+            animation: fly2 14s ease-in-out infinite;
+            animation-delay: -7s;
+        }
+
+        .bat-3 {
+            animation: fly3 12s ease-in-out infinite;
+            animation-delay: -4s;
+        }
+
+        .bat-4 {
+            animation: fly4 16s ease-in-out infinite;
+            animation-delay: -1s;
+        }
+
+        .bat-5 {
+            animation: fly5 13s ease-in-out infinite;
+            animation-delay: -10s;
+        }
+
+        .bat-6 {
+            animation: fly1 15s ease-in-out infinite;
+            animation-delay: -8s;
+        }
+
+        .bat-7 {
+            animation: fly3 11s ease-in-out infinite;
+            animation-delay: -11s;
+        }
+
+        .bat-8 {
+            animation: fly2 18s ease-in-out infinite;
+            animation-delay: -5s;
+        }
+
+        /* Swooping Left to right */
+        @keyframes fly1 {
+            0% {
+                transform: translate(-10vw, 15vh) scale(1) rotate(5deg);
+            }
+
+            50% {
+                transform: translate(50vw, 30vh) scale(1) rotate(-5deg);
+            }
+
+            100% {
+                transform: translate(110vw, 10vh) scale(1) rotate(5deg);
+            }
+        }
+
+        /* Swooping Right to left (requires scaleX(-1) to flip the emoji) */
+        @keyframes fly2 {
+            0% {
+                transform: translate(110vw, 65vh) scaleX(-0.8) scaleY(0.8) rotate(-10deg);
+            }
+
+            50% {
+                transform: translate(40vw, 45vh) scaleX(-0.8) scaleY(0.8) rotate(10deg);
+            }
+
+            100% {
+                transform: translate(-10vw, 75vh) scaleX(-0.8) scaleY(0.8) rotate(-10deg);
+            }
+        }
+
+        /* Low altitude Left to right */
+        @keyframes fly3 {
+            0% {
+                transform: translate(-10vw, 85vh) scale(0.6) rotate(10deg);
+            }
+
+            50% {
+                transform: translate(60vw, 65vh) scale(0.6) rotate(-15deg);
+            }
+
+            100% {
+                transform: translate(110vw, 90vh) scale(0.6) rotate(10deg);
+            }
+        }
+
+        /* High altitude Right to left, larger */
+        @keyframes fly4 {
+            0% {
+                transform: translate(110vw, 35vh) scaleX(-1.2) scaleY(1.2);
+            }
+
+            50% {
+                transform: translate(50vw, 55vh) scaleX(-1.2) scaleY(1.2);
+            }
+
+            100% {
+                transform: translate(-10vw, 25vh) scaleX(-1.2) scaleY(1.2);
+            }
+        }
+
+        /* Erratic diving path */
+        @keyframes fly5 {
+            0% {
+                transform: translate(-10vw, 45vh) scale(0.9);
+            }
+
+            25% {
+                transform: translate(25vw, 15vh) scale(0.9) rotate(-15deg);
+            }
+
+            75% {
+                transform: translate(75vw, 75vh) scale(0.9) rotate(15deg);
+            }
+
+            100% {
+                transform: translate(110vw, 45vh) scale(0.9);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Atmospheric Bats Layer -->
+    <div class="bat-cave">
+        <div class="bat-wrapper bat-1">
+            <div class="bat-icon">🦇</div>
+        </div>
+        <div class="bat-wrapper bat-2">
+            <div class="bat-icon">🦇</div>
+        </div>
+        <div class="bat-wrapper bat-3">
+            <div class="bat-icon">🦇</div>
+        </div>
+        <div class="bat-wrapper bat-4">
+            <div class="bat-icon">🦇</div>
+        </div>
+        <div class="bat-wrapper bat-5">
+            <div class="bat-icon">🦇</div>
+        </div>
+        <div class="bat-wrapper bat-6">
+            <div class="bat-icon">🦇</div>
+        </div>
+        <div class="bat-wrapper bat-7">
+            <div class="bat-icon">🦇</div>
+        </div>
+        <div class="bat-wrapper bat-8">
+            <div class="bat-icon">🦇</div>
+        </div>
+    </div>
+
+    <!-- Corner Navigation Toggle -->
+    <div class="corner-nav">
+        <button id="btn-view-toggle" class="btn-action" onclick="toggleMainView()">
+            <span>📡</span> Protocol Data Flow
+        </button>
+    </div>
+
+    <div class="header">
+        <h1>Gotham City Industrial Grid</h1>
+        <p>AI-Powered OT Attack Demonstration</p>
+    </div>
+
+    <!-- ==============================================================
+     TAB 1: ARCHITECTURE TOPOLOGY
+     ============================================================== -->
+    <div id="view-topology" class="tab-content active">
+        <div class="status-bar">
+            <div class="status-item">
+                <div class="status-dot dot-green"></div>
+                <div class="status-text"><strong>5</strong> core systems running</div>
+            </div>
+            <div class="status-item">
+                <div class="status-dot dot-green"></div>
+                <div class="status-text"><strong>2</strong> process networks isolated</div>
+            </div>
+            <div class="status-item">
+                <div class="status-dot dot-gold"></div>
+                <div class="status-text">Central Monitoring Station: <strong>Active</strong></div>
+            </div>
+        </div>
+
+        <!-- Central Management Network -->
+        <div class="central-network">
+            <div class="network-header">
+                <div class="network-icon">🦇</div>
+                <div class="network-info">
+                    <h2>Gotham City Operations</h2>
+                    <div class="subnet">Central Command · 10.10.10.0/24</div>
+                </div>
+            </div>
+            <div class="network-desc">
+                The central hub for system engineers and plant managers. Provides secure, monitored access to both the
+                Substation and Industrial Process segments for configuration, logging, and status monitoring.
+            </div>
+            <div class="devices">
+                <div class="device server-device">
+                    <div class="hw-header">
+                        <span class="hw-label">SysAdmin Node</span>
+                        <div class="hw-leds">
+                            <span class="led on"></span><span class="led tx"></span><span class="led rx"></span>
+                        </div>
+                    </div>
+                    <div class="device-body">
+                        <div class="device-name">💻 Central Monitoring Station</div>
+                        <div class="device-ip">10.10.10.5 (Mgmt) · 192.168.100.6 (Sub) · 192.168.200.6 (Ind)</div>
+                        <div class="device-tag tag-active">Multi-homed · Active Session</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Two Isolated Segments -->
+        <div class="segments">
+
+            <!-- Substation Segment -->
+            <div class="segment segment-substation">
+                <div class="segment-header">
+                    <div class="segment-icon">⚡</div>
+                    <div class="segment-title">
+                        <h3>East End Substation</h3>
+                        <div class="subnet">Capacity: 42,000 residents · 192.168.100.0/24</div>
+                    </div>
+                </div>
+                <div class="segment-status">
+                    <span>●</span> Secure Ring
+                </div>
+
+                <div class="devices">
+                    <div class="device ied-device">
+                        <div class="hw-header">
+                            <span class="hw-label">CTRL-NODE-ALPHA</span>
+                            <div class="hw-leds">
+                                <span class="led on" title="PWR"></span><span class="led tx" title="TX"></span><span
+                                    class="led rx" title="RX"></span>
+                            </div>
+                        </div>
+                        <div class="device-body">
+                            <div class="device-name">📡 Control IED</div>
+                            <div class="device-ip">192.168.100.10</div>
+                            <div class="device-tag tag-protocol">GOOSE Publisher · IEC 61850</div>
+                        </div>
+                        <div class="hw-footer">
+                            <div class="port rj45 active"></div>
+                            <div class="port rj45"></div>
+                            <div class="port fiber active"></div>
+                        </div>
+                    </div>
+
+                    <div class="devices-row">
+                        <div class="device ied-device" style="cursor: pointer;" onclick="window.open('http://localhost:9001', '_blank')">
+                            <div class="hw-header">
+                                <span class="hw-label">PROT-RELAY-A1</span>
+                                <div class="hw-leds">
+                                    <span class="led on"></span><span class="led on"></span><span class="led rx"></span>
+                                </div>
+                            </div>
+                            <div class="device-body">
+                                <div class="device-name">⚡ Breaker IED v1</div>
+                                <div class="device-ip">192.168.100.2 · Port 9001</div>
+                                <div class="device-tag tag-active">Active · Feeder 1</div>
+                                <div class="device-tag tag-protocol" style="margin-left: 4px;">GOOSE Subscriber</div>
+
+                                <div class="cities-container cities-col">
+                                    <div class="city-item"><span class="city-icon glowing-city">🏙️</span><span
+                                            class="city-name">The Narrows</span></div>
+                                    <div class="city-item"><span class="city-icon glowing-city">🏙️</span><span
+                                            class="city-name">Crime Alley</span></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="device ied-device" style="cursor: pointer;" onclick="window.open('http://localhost:9002', '_blank')">
+                            <div class="hw-header">
+                                <span class="hw-label">PROT-RELAY-B2</span>
+                                <div class="hw-leds">
+                                    <span class="led on"></span><span class="led on"></span><span class="led rx"></span>
+                                </div>
+                            </div>
+                            <div class="device-body">
+                                <div class="device-name">⚡ Breaker IED v2</div>
+                                <div class="device-ip">192.168.100.4 · Port 9002</div>
+                                <div class="device-tag tag-active">Active · Feeder 2</div>
+                                <div class="device-tag tag-protocol" style="margin-left: 4px;">GOOSE Subscriber</div>
+
+                                <div class="cities-container cities-col">
+                                    <div class="city-item"><span class="city-icon glowing-city">🏙️</span><span
+                                            class="city-name">Diamond Dist.</span></div>
+                                    <div class="city-item"><span class="city-icon glowing-city">🏙️</span><span
+                                            class="city-name">Bristol</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Industrial Process Segment -->
+            <div class="segment segment-industrial">
+                <div class="segment-header">
+                    <div class="segment-icon">🏭</div>
+                    <div class="segment-title">
+                        <h3>Wayne Enterprises</h3>
+                        <div class="subnet">Industrial District · 192.168.200.0/24</div>
+                    </div>
+                </div>
+                <div class="segment-status">
+                    <span>●</span> Secure Ring
+                </div>
+
+                <div class="devices">
+                    <div class="device server-device" style="cursor: pointer;" onclick="window.open('http://localhost:8080/ScadaBR', '_blank')">
+                        <div class="hw-header">
+                            <span class="hw-label">HMI-RACK-01</span>
+                            <div class="hw-leds">
+                                <span class="led on"></span><span class="led rx"></span>
+                            </div>
+                        </div>
+                        <div class="device-body">
+                            <div class="device-name">📊 WayneTech SCADA HMI</div>
+                            <div class="device-ip">192.168.200.4 · Port 8080</div>
+                            <div class="device-tag tag-scada">SCADA · Visualization</div>
+                            <div class="device-tag tag-protocol" style="margin-left: 4px;">Modbus TCP Client</div>
+                        </div>
+                    </div>
+
+                    <div class="device plc-device" style="cursor: pointer;" onclick="window.open('http://localhost:8081', '_blank')">
+                        <div class="hw-header">
+                            <span class="hw-label">IND-PLC-CORE</span>
+                            <div class="hw-leds">
+                                <span class="led on"></span><span class="led tx"></span><span class="led rx"></span>
+                            </div>
+                        </div>
+                        <div class="device-body">
+                            <div class="device-name">🔧 OpenPLC Runtime</div>
+                            <div class="device-ip">192.168.200.3 · Port 8081</div>
+                            <div class="device-tag tag-protocol">Modbus TCP Server · PLC</div>
+
+                            <div class="plant-container">
+                                <div class="plant-icon-wrapper">
+                                    <span class="base-icon">🏭</span>
+                                    <span class="overlay-gear">⚙️</span>
+                                    <span class="overlay-gear-2">⚙️</span>
+                                </div>
+                                <div class="plant-details">
+                                    <strong>Applied Sciences Div.</strong>
+                                    <span>Experimental Fabrication</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="plc-terminals">
+                            <div class="term-block">
+                                <div class="screw"></div>
+                                <div class="screw"></div>
+                                <div class="screw"></div>
+                                <div class="screw"></div>
+                            </div>
+                            <div class="term-block">
+                                <div class="screw"></div>
+                                <div class="screw"></div>
+                                <div class="screw"></div>
+                                <div class="screw"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ==============================================================
+     TAB 2: PROTOCOL DATA FLOW
+     ============================================================== -->
+    <div id="view-protocols" class="tab-content">
+
+        <div class="tab-header-actions">
+            <button id="btn-toggle-anim" class="btn-action" onclick="toggleAnimations()">
+                <span>⏸️</span> Freeze Packets
+            </button>
+        </div>
+
+        <!-- IEC 61850 GOOSE Section -->
+        <div class="protocol-card" style="border-left: 4px solid #3b82f6;">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2><span style="font-size: 28px; filter: grayscale(100%);">📡</span> IEC 61850 GOOSE</h2>
+                    <p>High-speed, unacknowledged multicast messaging for protective relaying.</p>
+                </div>
+                <div class="protocol-tags">
+                    <span class="tag tag-goose">Publisher / Subscriber</span>
+                    <span class="tag tag-goose">Layer 2 Multicast</span>
+                    <span class="tag tag-goose">Event Driven</span>
+                    <span class="tag tag-speed">⏱️ Speed: &lt; 4 ms</span>
+                </div>
+            </div>
+
+            <div class="viz-wrapper">
+                <div class="viz-area">
+                    <div class="device-node">
+                        <div class="node-header">Publisher</div>
+                        <div class="node-body">
+                            <div class="node-icon">📡</div>
+                            <div class="node-name">Control IED</div>
+                            <div class="node-role">MAC: 01:0C:CD:01:00:01</div>
+                        </div>
+                    </div>
+
+                    <div class="goose-network">
+                        <div class="track track-g-in"></div>
+                        <div class="track track-g-vert1"></div>
+                        <div class="track track-g-horiz1">
+                            <div class="arrow-right-blue"></div>
+                        </div>
+                        <div class="track track-g-vert2"></div>
+                        <div class="track track-g-horiz2">
+                            <div class="arrow-right-blue"></div>
+                        </div>
+
+                        <div class="switch-node">🖧</div>
+
+                        <div class="packet packet-goose packet-g-main">stNum:4 sqNum:1 Trip:TRUE</div>
+                        <div class="packet packet-goose packet-g-sub1">stNum:4 sqNum:1 Trip:TRUE</div>
+                        <div class="packet packet-goose packet-g-sub2">stNum:4 sqNum:1 Trip:TRUE</div>
+                    </div>
+
+                    <div class="subscriber-group">
+                        <div class="device-node" style="height: 110px;">
+                            <div class="node-header">Subscriber 1</div>
+                            <div class="node-body">
+                                <div class="node-name">Breaker IED v1</div>
+                                <div class="node-role">Listens to Multicast</div>
+                            </div>
+                        </div>
+                        <div class="device-node" style="height: 110px;">
+                            <div class="node-header">Subscriber 2</div>
+                            <div class="node-body">
+                                <div class="node-name">Breaker IED v2</div>
+                                <div class="node-role">Listens to Multicast</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-inspector">
+                <div class="inspector-title">GOOSE Ethernet Frame Anatomy</div>
+                <div class="data-grid">
+                    <div class="data-field">
+                        <span class="field-name">Destination MAC</span>
+                        <span class="field-value">01:0C:CD:01:00:01</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="field-name">EtherType</span>
+                        <span class="field-value">0x88B8 (GOOSE)</span>
+                    </div>
+                    <div class="data-field" style="border-color: #3b82f6;">
+                        <span class="field-name">stNum (State Number)</span>
+                        <span class="field-value val-highlight-blue">4 <span
+                                style="font-size: 10px; color:#768390;">(Event counter)</span></span>
+                    </div>
+                    <div class="data-field" style="border-color: #3b82f6;">
+                        <span class="field-name">sqNum (Seq Number)</span>
+                        <span class="field-value val-highlight-blue">1 <span
+                                style="font-size: 10px; color:#768390;">(Retransmit counter)</span></span>
+                    </div>
+                    <div class="data-field">
+                        <span class="field-name">Dataset (AllData)</span>
+                        <span class="field-value">[ TRUE, FALSE, 0 ]</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modbus TCP Section -->
+        <div class="protocol-card" style="border-left: 4px solid #10b981;">
+            <div class="protocol-header">
+                <div class="protocol-title">
+                    <h2><span style="font-size: 28px; filter: grayscale(100%);">🏭</span> Modbus TCP</h2>
+                    <p>Polling-based, request/response architecture for process control.</p>
+                </div>
+                <div class="protocol-tags">
+                    <span class="tag tag-modbus">Client / Server</span>
+                    <span class="tag tag-modbus">Layer 4 TCP (Port 502)</span>
+                    <span class="tag tag-modbus">Polling Driven</span>
+                    <span class="tag tag-speed">⏱️ Speed: 200ms–500ms</span>
+                </div>
+            </div>
+
+            <div class="viz-wrapper">
+                <div class="viz-area">
+                    <div class="device-node">
+                        <div class="node-header">Client (Master)</div>
+                        <div class="node-body">
+                            <div class="node-icon">📊</div>
+                            <div class="node-name">WayneTech SCADA</div>
+                            <div class="node-role">IP: 192.168.200.4</div>
+                        </div>
+                    </div>
+
+                    <div class="modbus-network">
+                        <div class="track track-m-req">
+                            <div class="arrow-right-yellow"></div>
+                        </div>
+                        <div class="track track-m-res">
+                            <div class="arrow-left-green"></div>
+                        </div>
+
+                        <div class="packet packet-m-req">[03] Read Registers 40001 (Len: 2)</div>
+                        <div class="packet packet-m-res">Data: [ 1500, 420 ]</div>
+                    </div>
+
+                    <div class="device-node">
+                        <div class="node-header">Server (Slave)</div>
+                        <div class="node-body">
+                            <div class="node-icon">🔧</div>
+                            <div class="node-name">OpenPLC</div>
+                            <div class="node-role">IP: 192.168.200.3:502</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="data-inspector">
+                <div class="inspector-title">Modbus TCP Payload Anatomy (Read Holding Registers)</div>
+                <div class="data-grid">
+                    <div class="data-field">
+                        <span class="field-name">MBAP: Trans ID</span>
+                        <span class="field-value">0x0001</span>
+                    </div>
+                    <div class="data-field">
+                        <span class="field-name">MBAP: Unit ID</span>
+                        <span class="field-value">0x01 (Slave 1)</span>
+                    </div>
+                    <div class="data-field" style="border-color: #f59e0b;">
+                        <span class="field-name">Function Code</span>
+                        <span class="field-value val-highlight-yellow">0x03 (Read)</span>
+                    </div>
+                    <div class="data-field" style="border-color: #f59e0b;">
+                        <span class="field-name">Request Data</span>
+                        <span class="field-value val-highlight-yellow">Reg: 0x0000, Cnt: 0x02</span>
+                    </div>
+                    <div class="data-field" style="border-color: #10b981;">
+                        <span class="field-name">Response Data</span>
+                        <span class="field-value val-highlight-green">Byt: 0x04, Val: [05DC, 01A4]</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        function toggleAnimations() {
+            const view = document.getElementById('view-protocols');
+            const btn = document.getElementById('btn-toggle-anim');
+            view.classList.toggle('paused-animations');
+
+            if (view.classList.contains('paused-animations')) {
+                btn.innerHTML = '<span>▶️</span> Play Packets';
+            } else {
+                btn.innerHTML = '<span>⏸️</span> Freeze Packets';
+            }
+        }
+
+        function toggleMainView() {
+            const topologyView = document.getElementById('view-topology');
+            const protocolsView = document.getElementById('view-protocols');
+            const toggleBtn = document.getElementById('btn-view-toggle');
+
+            if (topologyView.classList.contains('active')) {
+                // Switch to Protocols
+                topologyView.classList.remove('active');
+                protocolsView.classList.add('active');
+                toggleBtn.innerHTML = '<span>🏗️</span> Architecture Topology';
+            } else {
+                // Switch to Topology
+                protocolsView.classList.remove('active');
+                topologyView.classList.add('active');
+                toggleBtn.innerHTML = '<span>📡</span> Protocol Data Flow';
+            }
+        }
+    </script>
+
+</body>
+
+</html>

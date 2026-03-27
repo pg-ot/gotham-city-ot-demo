@@ -1,0 +1,213 @@
+version: '3.8'
+
+# IMPORTANT: Replace YOUR_DOCKERHUB_USERNAME with your actual Docker Hub username
+# Example: If your username is "johndoe", replace all instances of YOUR_DOCKERHUB_USERNAME with johndoe
+
+services:
+  # Breaker IED v1 - Zone A Feeder (Vulnerable - no sequence validation)
+  breaker-ied-v1:
+    image: pavi0204/gotham-breaker-v1:latest
+    ports:
+      - "9001:9000"
+    networks:
+      - ot_network
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=10M,mode=1777
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+          pids: 100
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    restart: unless-stopped
+    container_name: substation-breaker-v1
+
+  # Breaker IED v2 - Zone B Feeder (Secure - stNum/sqNum validation)
+  breaker-ied-v2:
+    image: pavi0204/gotham-breaker-v2:latest
+    ports:
+      - "9002:9000"
+    networks:
+      - ot_network
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=10M,mode=1777
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+          pids: 100
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    restart: unless-stopped
+    container_name: substation-breaker-v2
+
+  # Control IED - Legitimate GOOSE publisher
+  control-ied:
+    image: pavi0204/gotham-control-ied:latest
+    command: ["./control_ied"]
+    networks:
+      - ot_network
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=10M,mode=1777
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+          pids: 50
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    restart: unless-stopped
+    container_name: substation-control-ied
+
+  # Kali-based attacker workstation
+  kali-workstation:
+    image: kalilinux/kali-last-release:latest
+    command: tail -f /dev/null
+    ports:
+      - "2222:22"
+    networks:
+      attacker_network:
+        ipv4_address: 10.10.10.5
+      ot_network:
+        ipv4_address: 192.168.100.6
+      scada_network:
+        ipv4_address: 192.168.200.6
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+          pids: 200
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    restart: unless-stopped
+    container_name: kali-workstation
+
+  # OpenPLC Runtime
+  openplc:
+    image: pavi0204/openplc-with-message:latest
+    container_name: openplc
+    privileged: true
+    ports:
+      - "8081:8080"
+      - "502:502"
+    networks:
+      - scada_network
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+          pids: 100
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    restart: unless-stopped
+
+  # ScadaBR SCADA System
+  scadabr:
+    image: pavi0204/scadabr-with-message:golden
+    container_name: scadabr
+    privileged: true
+    ports:
+      - "8080:8080"
+    networks:
+      - scada_network
+    depends_on:
+      - openplc
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 2G
+          pids: 500
+        reservations:
+          cpus: '0.25'
+          memory: 512M
+    restart: unless-stopped
+
+  # Central Monitoring Station - Bridges all networks (ATTACK ENTRY POINT)
+  central-monitoring:
+    image: pavi0204/gotham-central-monitoring:latest
+    container_name: central-monitoring
+    ports:
+      - "5000:5000"
+    networks:
+      attacker_network:
+        ipv4_address: 10.10.10.10
+      ot_network:
+        ipv4_address: 192.168.100.10
+      scada_network:
+        ipv4_address: 192.168.200.10
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    restart: unless-stopped
+
+networks:
+  # Central Management Network - Kali primary interface
+  attacker_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.10.0/24
+          gateway: 10.10.10.1
+    # internal: false removed to allow port publishing for demo
+
+  # Substation Segment - IEDs, RTUs, IEC 61850/GOOSE
+  ot_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.100.0/24
+          gateway: 192.168.100.1
+    # internal: true removed to allow port publishing for demo
+
+  # Industrial Process Segment - PLC, SCADA, Modbus
+  scada_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 192.168.200.0/24
+          gateway: 192.168.200.1
+    # internal: true removed to allow port publishing for demo
